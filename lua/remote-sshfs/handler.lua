@@ -20,12 +20,20 @@ M.sshfs_wrapper = function(data, host, mount_dir, callback)
   -- TODO: Add mount point handler (and other handlers)
 end
 
-M.on_exit_handler = function(_, mount_dir, skip_clean, callback)
+M.on_exit_handler = function(_, mount_dir, skip_clean, hostname, cwd, callback)
   if M.clean_mount_folders and not skip_clean then
     log.line("handler", "Cleaning up mount directory " .. mount_dir)
     utils.cleanup_mount_dir(mount_dir, callback)
   else
     callback()
+  end
+  -- Force ssh disconnect
+  vim.fn.jobstart { "ssh", "-O", "exit", hostname }
+
+  -- Go back to cwd if pwd is different
+  if cwd ~= vim.uv.cwd() then
+    vim.uv.chdir(cwd)
+    vim.notify("Returned to " .. cwd)
   end
 end
 

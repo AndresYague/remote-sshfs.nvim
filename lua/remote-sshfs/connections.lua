@@ -91,7 +91,7 @@ end
 M.mount_host = function(host, mount_dir, ask_pass)
   -- Ensure sshfs is available
   if vim.fn.executable "sshfs" == 0 then
-    vim.api.nvim_err_writeln "[remote-sshfs] 'sshfs' not found. Please install sshfs to use remote-sshfs."
+    vim.notify("[remote-sshfs] 'sshfs' not found. Please install sshfs to use remote-sshfs.", vim.log.levels.ERROR)
     return
   end
   -- Setup new connection
@@ -237,6 +237,7 @@ M.mount_host = function(host, mount_dir, ask_pass)
     local skip_clean = false
     local spec_mount_point = mount_dir .. "/"
     local spec_host = host
+    local cwd = vim.uv.cwd()
     local id = vim.fn.jobstart(cmd, {
       on_stdout = function(_, data)
         handler.sshfs_wrapper(data, host, mount_dir, function(event)
@@ -255,13 +256,15 @@ M.mount_host = function(host, mount_dir, ask_pass)
         end)
       end,
       on_exit = function(jid, _, data)
-        if jid ~= sshfs_job_id then
+        -- If sshfs_job_id is nil for some reason, still try to finish job
+        if sshfs_job_id and jid ~= sshfs_job_id then
           return
         end
-        handler.on_exit_handler(data, mount_dir, skip_clean, function()
+        handler.on_exit_handler(data, mount_dir, skip_clean, host["Name"] or target_host, cwd, function()
           sshfs_job_id = nil
           mount_point = nil
           current_host = nil
+          cwd = nil
         end)
       end,
     })
@@ -300,9 +303,15 @@ M.unmount_host = function()
     mount_point = nil
     current_host = nil
     -- Clear cached remote-find commands for all picker backends
-    pcall(function() require("telescope._extensions.remote-sshfs").clear_cache() end)
-    pcall(function() require("remote-sshfs.pickers.snacks").clear_cache() end)
-    pcall(function() require("remote-sshfs.pickers.fzf-lua").clear_cache() end)
+    pcall(function()
+      require("telescope._extensions.remote-sshfs").clear_cache()
+    end)
+    pcall(function()
+      require("remote-sshfs.pickers.snacks").clear_cache()
+    end)
+    pcall(function()
+      require("remote-sshfs.pickers.fzf-lua").clear_cache()
+    end)
   end
 end
 
