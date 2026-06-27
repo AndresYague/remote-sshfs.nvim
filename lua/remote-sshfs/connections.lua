@@ -294,10 +294,16 @@ M.unmount_host = function()
   if mount_point then
     local target = mount_point:gsub("/$", "")
     -- Try Linux fusermount
-    vim.fn.system { "fusermount", "-u", target }
+    if vim.fn.executable "fusermount" == 1 then
+      vim.fn.system { "fusermount", "-u", target }
+    elseif vim.fn.executable "fusermount3" == 1 then
+      vim.fn.system { "fusermount3", "-u", target }
+    else
+      vim.fn.system { "umount", target }
+    end
     if vim.v.shell_error ~= 0 then
       -- Fallback to generic umount
-      vim.fn.system { "umount", target }
+      vim.notify("Unmounting failed", vim.log.levels.ERROR)
     end
     sshfs_job_id = nil
     mount_point = nil

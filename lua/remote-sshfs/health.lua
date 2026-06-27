@@ -12,7 +12,7 @@ function M.check()
   end
 
   -- Check for unmount capability
-  local has_fusermount = vim.fn.executable "fusermount" == 1
+  local has_fusermount = (vim.fn.executable "fusermount" == 1) or (vim.fn.executable "fusermount3" == 1)
   local has_umount = vim.fn.executable "umount" == 1
   if has_fusermount or has_umount then
     health.ok("Unmount tool found: " .. (has_fusermount and "fusermount" or "umount"))
